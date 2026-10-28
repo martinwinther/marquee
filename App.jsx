@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { openai } from './config.js'
 import content from './content.js'
 
+const MODEL = process.env.OPENAI_MODEL || 'openai/gpt-4o-mini'
+
 const QUESTIONS = [
   {
     id: 'favorite',
@@ -38,15 +40,40 @@ Rules:
 - Format: [{"title":"Movie Title","year":"YYYY","description":"1–2 sentences on why this fits their preferences."},...]`
 }
 
+async function fetchPoster(title, year) {
+  const apiKey = process.env.OMDB_API
+  if (!apiKey) return null
+  try {
+    const res = await fetch(
+      `https://www.omdbapi.com/?t=${encodeURIComponent(title)}&y=${year}&apikey=${apiKey}`
+    )
+    const data = await res.json()
+    return data.Poster && data.Poster !== 'N/A' ? data.Poster : null
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
-  const [answers, setAnswers] = useState({ favorite: '', era: '', tone: '' })
-  const [view, setView] = useState('form') // 'form' | 'loading' | 'results'
-  const [recs, setRecs] = useState([])
-  const [recIndex, setRecIndex] = useState(0)
-  const [error, setError] = useState('')
+  const [answers, setAnswers]         = useState({ favorite: '', era: '', tone: '' })
+  const [view, setView]               = useState('form') // 'form' | 'loading' | 'results'
+  const [recs, setRecs]               = useState([])
+  const [recIndex, setRecIndex]       = useState(0)
+  const [poster, setPoster]           = useState(null)
+  const [posterLoading, setPosterLoading] = useState(false)
+  const [error, setError]             = useState('')
 
   function update(id, val) {
     setAnswers(prev => ({ ...prev, [id]: val }))
+  }
+
+  async function loadMovie(recsList, index) {
+    setRecIndex(index)
+    setPoster(null)
+    setPosterLoading(true)
+    const url = await fetchPoster(recsList[index].title, recsList[index].year)
+    setPoster(url)
+    setPosterLoading(false)
   }
 
   async function handleSubmit(e) {
@@ -54,13 +81,13 @@ export default function App() {
     setError('')
     setView('loading')
 
-    const userPrompt = QUESTIONS.map(
-      q => `${q.label}\n${answers[q.id] || '(no answer)'}`
-    ).join('\n\n')
+    const userPrompt = QUESTIONS
+      .map(q => `${q.label}\n${answers[q.id] || '(no answer)'}`)
+      .join('\n\n')
 
     try {
       const response = await openai.chat.completions.create({
-        model: 'openai/gpt-4o-mini',
+        model: MODEL,
         messages: [
           { role: 'system', content: buildSystemPrompt() },
           { role: 'user', content: userPrompt },
@@ -70,22 +97,22 @@ export default function App() {
       const raw = response.choices[0].message.content.trim()
       const parsed = JSON.parse(raw)
       setRecs(parsed)
-      setRecIndex(0)
       setView('results')
+      await loadMovie(parsed, 0)
     } catch (err) {
       setError(`Something went wrong: ${err.message}`)
       setView('form')
     }
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (recIndex < recs.length - 1) {
-      setRecIndex(i => i + 1)
+      await loadMovie(recs, recIndex + 1)
     } else {
-      // Cycled through all — go back to start
       setView('form')
       setRecs([])
       setRecIndex(0)
+      setPoster(null)
     }
   }
 
@@ -113,7 +140,17 @@ export default function App() {
             {movie.title}
             <span className="result-year"> ({movie.year})</span>
           </h2>
+
+          {posterLoading && <div className="poster-wrap shimmer" />}
+          {!posterLoading && poster && (
+            <div className="poster-wrap">
+              <img className="poster" src={poster} alt={`${movie.title} poster`} />
+            </div>
+          )}
+          {!posterLoading && !poster && <div className="poster-wrap poster-missing" />}
+
           <p className="result-desc">{movie.description}</p>
+
           <button className="btn-green" onClick={handleNext}>
             {isLast ? 'Start Over' : 'Next Movie'}
           </button>
