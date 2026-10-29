@@ -1,9 +1,44 @@
-# Getting Started
+# PopChoice
+
+Answer a few questions and get a movie recommendation the whole group can agree on.
+
+## Getting Started
 Install the dependencies and run the project
 ```
 npm install
 npm start
 ```
+
+Create a `.env` alongside `package.json`:
+
+```
+OPENAI_API_KEY=sk-or-v1-...                  # an OpenRouter key
+OPENAI_MODEL=openai/gpt-4o-mini              # must return plain text, not reasoning-only
+EMBED_MODEL=openai/text-embedding-3-small    # optional, this is the default
+OMDB_API=...                                 # optional, used for poster art
+
+NEXT_PUBLIC_SUPABASE_URL=...                 # optional, see below
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+```
+
+`OPENAI_MODEL` must be a model that replies with ordinary message content.
+OpenRouter's `openrouter/free` auto-router is a bad choice here: it often picks
+a reasoning model that returns an empty `content`.
+
+## How recommendations work
+
+`movies.txt` is split into one chunk per film, each chunk is embedded, and the
+group's answers are embedded too. The closest chunks are the only candidates
+the model is allowed to recommend from.
+
+The vector search runs in the browser by default, so the app works with no
+database at all. To use Supabase's pgvector index instead:
+
+1. Supabase dashboard → SQL Editor → New query → paste `supabase/schema.sql` → Run.
+2. `npm run ingest` — chunks `movies.txt`, embeds it, and stores the vectors.
+
+The app detects the table automatically and falls back to in-browser search
+whenever it isn't reachable.
 
 Head over to https://vitejs.dev/ to learn more about configuring vite
 ## About Scrimba

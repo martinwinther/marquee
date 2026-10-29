@@ -115,6 +115,100 @@ body::before {
   background: #1f3670;
 }
 
+/* ── Multiple choice ──────────────────────────────────── */
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.choice {
+  background: #1a2e5e;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  color: #c8d4ec;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.choice:hover {
+  background: #22407f;
+}
+
+.choice.selected {
+  background: #62d66a;
+  border-color: #62d66a;
+  color: #0a2010;
+  font-weight: 700;
+}
+
+/* ── Setup (party size) ───────────────────────────────── */
+.setup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.setup-label {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.stepper-btn {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: none;
+  background: #1a2e5e;
+  color: #ffffff;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.stepper-btn:hover:not(:disabled) {
+  background: #22407f;
+}
+
+.stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper-value {
+  color: #ffffff;
+  font-size: 2.75rem;
+  font-weight: 800;
+  min-width: 2.5rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.setup .btn-green {
+  width: 100%;
+}
+
+/* Person counter shown in place of the title when several people play */
+.person-badge {
+  color: #ffffff;
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
 /* ── Button ───────────────────────────────────────────── */
 .btn-green {
   width: 100%;

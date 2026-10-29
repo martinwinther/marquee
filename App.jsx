@@ -1,43 +1,73 @@
 import { useState } from 'react'
 import { openai } from './config.js'
-import content from './content.js'
+import { retrieve } from './retrieval.js'
 
 const MODEL = process.env.OPENAI_MODEL || 'openai/gpt-4o-mini'
+const MAX_PARTY = 6
 
 const QUESTIONS = [
   {
     id: 'favorite',
+    type: 'text',
     label: "What's your favorite movie and why?",
     placeholder:
       'The Shawshank Redemption\nBecause it taught me to never give up hope no matter how hard life gets',
   },
   {
     id: 'era',
+    type: 'choice',
     label: 'Are you in the mood for something new or a classic?',
-    placeholder: 'I want to watch movies that were released after 1990',
+    options: ['New', 'Classic'],
   },
   {
-    id: 'tone',
-    label: 'Do you wanna have fun or do you want something serious?',
-    placeholder: 'I want to watch something stupid and fun',
+    id: 'mood',
+    type: 'choice',
+    label: 'What are you in the mood for?',
+    options: ['Fun', 'Serious', 'Inspiring', 'Scary'],
+  },
+  {
+    id: 'companion',
+    type: 'text',
+    label:
+      'Which famous film person would you love to be stranded on an island with and why?',
+    placeholder:
+      'Tom Hanks because he is really funny and can do the voice of Woody',
   },
 ]
 
-function buildSystemPrompt() {
-  const movieList = content
-    .map(m => `- ${m.title} (${m.releaseYear}): ${m.content}`)
-    .join('\n')
+const emptyAnswers = () => Object.fromEntries(QUESTIONS.map(q => [q.id, '']))
 
+/** One string for the embedding search — every answer the group gave. */
+function buildSearchQuery(party) {
+  return party
+    .flatMap(answers => QUESTIONS.map(q => answers[q.id]))
+    .filter(Boolean)
+    .join('. ')
+}
+
+function buildSystemPrompt(passages) {
   return `You are PopChoice, a movie recommendation assistant.
-Based on the user's answers, recommend 3 movies from the list below that best fit their taste.
 
-Available movies:
-${movieList}
+A group is picking one film to watch together. Recommend 3 movies from the
+candidates below, best fit first, balancing everyone's answers — a pick that
+delights one person and bores the rest is a bad pick.
+
+Candidate movies:
+${passages.join('\n\n')}
 
 Rules:
-- Only recommend movies from the list above.
+- Only recommend movies from the candidates above.
 - Respond with ONLY a raw JSON array — no markdown, no code fences, no explanation.
-- Format: [{"title":"Movie Title","year":"YYYY","description":"1–2 sentences on why this fits their preferences."},...]`
+- Format: [{"title":"Movie Title","year":"YYYY","description":"1–2 sentences on why this suits the group."},...]`
+}
+
+function describeParty(party) {
+  return party
+    .map((answers, i) => {
+      const lines = QUESTIONS.map(q => `${q.label}\n${answers[q.id]}`).join('\n')
+      return `Person ${i + 1}:\n${lines}`
+    })
+    .join('\n\n')
 }
 
 /**
@@ -86,16 +116,37 @@ async function fetchPoster(title, year) {
 }
 
 export default function App() {
-  const [answers, setAnswers]         = useState({ favorite: '', era: '', tone: '' })
-  const [view, setView]               = useState('form') // 'form' | 'loading' | 'results'
-  const [recs, setRecs]               = useState([])
-  const [recIndex, setRecIndex]       = useState(0)
-  const [poster, setPoster]           = useState(null)
+  const [view, setView]         = useState('setup') // setup | questions | loading | results
+  const [partySize, setPartySize] = useState(1)
+  const [party, setParty]       = useState([emptyAnswers()])
+  const [personIndex, setPersonIndex] = useState(0)
+  const [recs, setRecs]         = useState([])
+  const [recIndex, setRecIndex] = useState(0)
+  const [poster, setPoster]     = useState(null)
   const [posterLoading, setPosterLoading] = useState(false)
-  const [error, setError]             = useState('')
+  const [error, setError]       = useState('')
 
-  function update(id, val) {
-    setAnswers(prev => ({ ...prev, [id]: val }))
+  function update(id, value) {
+    setParty(prev =>
+      prev.map((answers, i) =>
+        i === personIndex ? { ...answers, [id]: value } : answers
+      )
+    )
+  }
+
+  function startQuestions() {
+    setParty(Array.from({ length: partySize }, emptyAnswers))
+    setPersonIndex(0)
+    setError('')
+    setView('questions')
+  }
+
+  function startOver() {
+    setRecs([])
+    setRecIndex(0)
+    setPoster(null)
+    setError('')
+    setView('setup')
   }
 
   async function loadMovie(recsList, index) {
@@ -107,21 +158,15 @@ export default function App() {
     setPosterLoading(false)
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setError('')
+  async function getRecommendations(finalParty) {
     setView('loading')
-
-    const userPrompt = QUESTIONS
-      .map(q => `${q.label}\n${answers[q.id] || '(no answer)'}`)
-      .join('\n\n')
-
     try {
+      const { passages } = await retrieve(buildSearchQuery(finalParty))
       const response = await openai.chat.completions.create({
         model: MODEL,
         messages: [
-          { role: 'system', content: buildSystemPrompt() },
-          { role: 'user', content: userPrompt },
+          { role: 'system', content: buildSystemPrompt(passages) },
+          { role: 'user', content: describeParty(finalParty) },
         ],
       })
 
@@ -131,19 +176,72 @@ export default function App() {
       await loadMovie(parsed, 0)
     } catch (err) {
       setError(`Something went wrong: ${err.message}`)
-      setView('form')
+      setView('questions')
     }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    // Choice questions aren't native form controls, so `required` can't catch them.
+    if (QUESTIONS.some(q => !party[personIndex][q.id])) {
+      setError('Please answer all four questions.')
+      return
+    }
+    setError('')
+
+    if (personIndex < partySize - 1) {
+      setPersonIndex(personIndex + 1)
+      return
+    }
+    await getRecommendations(party)
   }
 
   async function handleNext() {
     if (recIndex < recs.length - 1) {
       await loadMovie(recs, recIndex + 1)
     } else {
-      setView('form')
-      setRecs([])
-      setRecIndex(0)
-      setPoster(null)
+      startOver()
     }
+  }
+
+  // ── Setup ────────────────────────────────────────────────────────────────
+  if (view === 'setup') {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <span className="popcorn" aria-hidden="true">🍿</span>
+          <h1 className="app-title">PopChoice</h1>
+        </header>
+
+        <div className="setup">
+          <p className="setup-label">How many people are watching?</p>
+          <div className="stepper">
+            <button
+              type="button"
+              className="stepper-btn"
+              onClick={() => setPartySize(n => Math.max(1, n - 1))}
+              disabled={partySize <= 1}
+              aria-label="Fewer people"
+            >
+              −
+            </button>
+            <span className="stepper-value">{partySize}</span>
+            <button
+              type="button"
+              className="stepper-btn"
+              onClick={() => setPartySize(n => Math.min(MAX_PARTY, n + 1))}
+              disabled={partySize >= MAX_PARTY}
+              aria-label="More people"
+            >
+              +
+            </button>
+          </div>
+          <button className="btn-green" onClick={startQuestions}>
+            Start
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // ── Loading ──────────────────────────────────────────────────────────────
@@ -189,33 +287,62 @@ export default function App() {
     )
   }
 
-  // ── Form ─────────────────────────────────────────────────────────────────
+  // ── Questions ────────────────────────────────────────────────────────────
+  const answers = party[personIndex]
+  const isLastPerson = personIndex === partySize - 1
+
   return (
     <div className="app">
       <header className="app-header">
         <span className="popcorn" aria-hidden="true">🍿</span>
-        <h1 className="app-title">PopChoice</h1>
+        {partySize > 1 ? (
+          <p className="person-badge" aria-label={`Person ${personIndex + 1} of ${partySize}`}>
+            {personIndex + 1}
+          </p>
+        ) : (
+          <h1 className="app-title">PopChoice</h1>
+        )}
       </header>
 
       <form className="form" onSubmit={handleSubmit}>
         {QUESTIONS.map(q => (
           <div key={q.id} className="field">
-            <label className="field-label">{q.label}</label>
-            <textarea
-              className="field-input"
-              placeholder={q.placeholder}
-              value={answers[q.id]}
-              onChange={e => update(q.id, e.target.value)}
-              rows={3}
-              required
-            />
+            <label className="field-label" htmlFor={q.type === 'text' ? q.id : undefined}>
+              {q.label}
+            </label>
+
+            {q.type === 'text' ? (
+              <textarea
+                id={q.id}
+                className="field-input"
+                placeholder={q.placeholder}
+                value={answers[q.id]}
+                onChange={e => update(q.id, e.target.value)}
+                rows={3}
+                required
+              />
+            ) : (
+              <div className="choices" role="group" aria-label={q.label}>
+                {q.options.map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    className={`choice${answers[q.id] === option ? ' selected' : ''}`}
+                    onClick={() => update(q.id, option)}
+                    aria-pressed={answers[q.id] === option}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
 
         {error && <p className="error-msg">{error}</p>}
 
         <button className="btn-green" type="submit">
-          Let's Go
+          {isLastPerson ? "Let's Go" : 'Next Person'}
         </button>
       </form>
     </div>

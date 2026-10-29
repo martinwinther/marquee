@@ -6,7 +6,8 @@
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ingest": "node --env-file=.env ingest.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.38.2",
