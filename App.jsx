@@ -40,12 +40,43 @@ Rules:
 - Format: [{"title":"Movie Title","year":"YYYY","description":"1–2 sentences on why this fits their preferences."},...]`
 }
 
+/**
+ * Models don't always honour "raw JSON only" — some wrap it in a markdown
+ * fence, some add a sentence before it, and reasoning models can return a
+ * null content with the answer in a separate field. Dig the array out.
+ */
+function parseRecommendations(message) {
+  const raw = (message?.content ?? '').trim()
+  if (!raw) throw new Error('the model returned an empty response')
+
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const candidate = (fenced ? fenced[1] : raw).trim()
+  const sliced = candidate.slice(
+    candidate.indexOf('['),
+    candidate.lastIndexOf(']') + 1
+  )
+
+  let parsed
+  try {
+    parsed = JSON.parse(sliced || candidate)
+  } catch {
+    throw new Error("the model's reply wasn't valid JSON")
+  }
+
+  const list = Array.isArray(parsed) ? parsed : parsed.movies
+  if (!Array.isArray(list) || list.length === 0) {
+    throw new Error('the model returned no movies')
+  }
+  return list.filter(m => m && m.title)
+}
+
 async function fetchPoster(title, year) {
   const apiKey = process.env.OMDB_API
   if (!apiKey) return null
   try {
+    const yearParam = year ? `&y=${encodeURIComponent(year)}` : ''
     const res = await fetch(
-      `https://www.omdbapi.com/?t=${encodeURIComponent(title)}&y=${year}&apikey=${apiKey}`
+      `https://www.omdbapi.com/?t=${encodeURIComponent(title)}${yearParam}&apikey=${apiKey}`
     )
     const data = await res.json()
     return data.Poster && data.Poster !== 'N/A' ? data.Poster : null
@@ -94,8 +125,7 @@ export default function App() {
         ],
       })
 
-      const raw = response.choices[0].message.content.trim()
-      const parsed = JSON.parse(raw)
+      const parsed = parseRecommendations(response.choices?.[0]?.message)
       setRecs(parsed)
       setView('results')
       await loadMovie(parsed, 0)
@@ -138,7 +168,7 @@ export default function App() {
         <div className="result">
           <h2 className="result-title">
             {movie.title}
-            <span className="result-year"> ({movie.year})</span>
+            {movie.year && <span className="result-year"> ({movie.year})</span>}
           </h2>
 
           {posterLoading && <div className="poster-wrap shimmer" />}
@@ -177,6 +207,7 @@ export default function App() {
               value={answers[q.id]}
               onChange={e => update(q.id, e.target.value)}
               rows={3}
+              required
             />
           </div>
         ))}

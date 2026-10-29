@@ -196,11 +196,14 @@ body::before {
 /* Poster */
 .poster-wrap {
   width: 100%;
+  /* Cap the width, not the height — capping the height would make the box
+     wider than 2:3 and `cover` would crop the poster art. */
+  max-width: 227px;
+  margin: 0 auto;
   aspect-ratio: 2 / 3;
   border-radius: 14px;
   overflow: hidden;
   background: #1a2e5e;
-  max-height: 340px;
 }
 
 .poster {
