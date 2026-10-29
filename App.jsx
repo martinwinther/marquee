@@ -37,6 +37,35 @@ const QUESTIONS = [
 
 const emptyAnswers = () => Object.fromEntries(QUESTIONS.map(q => [q.id, '']))
 
+/** The sign out front: a lit board with bulbs along the bottom. */
+function Mark() {
+  return (
+    <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <rect x="4" y="5" width="24" height="15" rx="3" />
+        <path d="M10 11h12M13 15.5h6" />
+      </g>
+      <g fill="currentColor">
+        <circle cx="8" cy="26" r="1.7" />
+        <circle cx="16" cy="26" r="1.7" />
+        <circle cx="24" cy="26" r="1.7" />
+      </g>
+    </svg>
+  )
+}
+
+/** Decorative — the step is always stated in words right above it. */
+function Progress({ total, index }) {
+  if (total < 2) return null
+  return (
+    <div className="progress" aria-hidden="true">
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} className={`progress-seg${i <= index ? ' on' : ''}`} />
+      ))}
+    </div>
+  )
+}
+
 /** One string for the embedding search — every answer the group gave. */
 function buildSearchQuery(party) {
   return party
@@ -45,23 +74,35 @@ function buildSearchQuery(party) {
     .join('. ')
 }
 
-function buildSystemPrompt(passages) {
-  return `You are PopChoice, a movie recommendation assistant.
+function buildSystemPrompt(passages, partySize) {
+  const audience =
+    partySize > 1
+      ? `A group of ${partySize} is picking one film to watch together. Recommend 3 movies
+from the candidates below, best fit first, balancing everyone's answers — a pick
+that delights one person and bores the rest is a bad pick.`
+      : `Someone is picking a film to watch tonight. Recommend 3 movies from the
+candidates below, best fit first.`
 
-A group is picking one film to watch together. Recommend 3 movies from the
-candidates below, best fit first, balancing everyone's answers — a pick that
-delights one person and bores the rest is a bad pick.
+  return `You are Marquee, a movie recommendation assistant.
+
+${audience}
 
 Candidate movies:
 ${passages.join('\n\n')}
 
 Rules:
 - Only recommend movies from the candidates above.
+- Address the viewers directly as "you". Never write "Person 1" or any other
+  label from the answers — those numbers are bookkeeping, not names.
 - Respond with ONLY a raw JSON array — no markdown, no code fences, no explanation.
-- Format: [{"title":"Movie Title","year":"YYYY","description":"1–2 sentences on why this suits the group."},...]`
+- Format: [{"title":"Movie Title","year":"YYYY","description":"1–2 sentences on why this suits them."},...]`
 }
 
 function describeParty(party) {
+  // Numbering a party of one makes the model write "Person 1's taste".
+  if (party.length === 1) {
+    return QUESTIONS.map(q => `${q.label}\n${party[0][q.id]}`).join('\n')
+  }
   return party
     .map((answers, i) => {
       const lines = QUESTIONS.map(q => `${q.label}\n${answers[q.id]}`).join('\n')
@@ -165,7 +206,7 @@ export default function App() {
       const response = await openai.chat.completions.create({
         model: MODEL,
         messages: [
-          { role: 'system', content: buildSystemPrompt(passages) },
+          { role: 'system', content: buildSystemPrompt(passages, finalParty.length) },
           { role: 'user', content: describeParty(finalParty) },
         ],
       })
@@ -208,9 +249,10 @@ export default function App() {
   if (view === 'setup') {
     return (
       <div className="app">
-        <header className="app-header">
-          <span className="popcorn" aria-hidden="true">🍿</span>
-          <h1 className="app-title">PopChoice</h1>
+        <header className="brand">
+          <Mark />
+          <h1 className="wordmark">Marquee</h1>
+          <p className="tagline">what we're watching tonight</p>
         </header>
 
         <div className="setup">
@@ -236,7 +278,7 @@ export default function App() {
               +
             </button>
           </div>
-          <button className="btn-green" onClick={startQuestions}>
+          <button className="btn" onClick={startQuestions}>
             Start
           </button>
         </div>
@@ -248,9 +290,9 @@ export default function App() {
   if (view === 'loading') {
     return (
       <div className="app">
-        <div className="loading">
-          <span className="popcorn" aria-hidden="true">🍿</span>
-          <p className="loading-text">Finding your perfect movie…</p>
+        <div className="loading" role="status">
+          <span className="reel" aria-hidden="true" />
+          <p className="loading-text">Finding your film…</p>
         </div>
       </div>
     )
@@ -263,6 +305,13 @@ export default function App() {
 
     return (
       <div className="app">
+        <div className="step-head">
+          <p className="eyebrow">
+            Now showing · {recIndex + 1} of {recs.length}
+          </p>
+          <Progress total={recs.length} index={recIndex} />
+        </div>
+
         <div className="result">
           <h2 className="result-title">
             {movie.title}
@@ -279,8 +328,8 @@ export default function App() {
 
           <p className="result-desc">{movie.description}</p>
 
-          <button className="btn-green" onClick={handleNext}>
-            {isLast ? 'Start Over' : 'Next Movie'}
+          <button className="btn" onClick={handleNext}>
+            {isLast ? 'Start over' : 'Next film'}
           </button>
         </div>
       </div>
@@ -293,14 +342,17 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <span className="popcorn" aria-hidden="true">🍿</span>
+      <header className="step-head">
+        <Mark />
         {partySize > 1 ? (
-          <p className="person-badge" aria-label={`Person ${personIndex + 1} of ${partySize}`}>
-            {personIndex + 1}
-          </p>
+          <>
+            <p className="eyebrow">
+              Person {personIndex + 1} of {partySize}
+            </p>
+            <Progress total={partySize} index={personIndex} />
+          </>
         ) : (
-          <h1 className="app-title">PopChoice</h1>
+          <h1 className="wordmark">Marquee</h1>
         )}
       </header>
 
@@ -341,8 +393,8 @@ export default function App() {
 
         {error && <p className="error-msg">{error}</p>}
 
-        <button className="btn-green" type="submit">
-          {isLastPerson ? "Let's Go" : 'Next Person'}
+        <button className="btn" type="submit">
+          {isLastPerson ? 'Find our film' : 'Next person'}
         </button>
       </form>
     </div>

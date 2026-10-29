@@ -100,4 +100,4 @@ const { error: insertError } = await withTimeout(
 )
 if (insertError) throw new Error(`Insert failed: ${insertError.message}`)
 
-console.log(`Stored ${chunks.length} documents in Supabase. PopChoice will now use hosted vector search.`)
+console.log(`Stored ${chunks.length} documents in Supabase. Marquee will now use hosted vector search.`)

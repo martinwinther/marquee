@@ -1,6 +1,6 @@
 {
-  "name": "PopChoice",
-  "description": "https://scrimba.com/ai-engineer-path-c02v/~023",
+  "name": "marquee",
+  "description": "Four questions, three picks. Settle on a film the whole room wants to watch.",
   "type": "module",
   "scripts": {
     "start": "vite",

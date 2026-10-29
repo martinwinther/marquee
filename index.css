@@ -1,3 +1,77 @@
+/* ============================================================================
+   MARQUEE — design system
+   ----------------------------------------------------------------------------
+   Concept: "lights down". The house lights drop and the screen is the only
+   light source in the room. So the interface is dark and deliberately unlit,
+   and the poster is the brightest thing on it — lit from behind rather than
+   pasted onto a card.
+
+   Two rules hold the whole thing together:
+     1. One accent. Projector amber, nothing else. It harmonises with poster
+        art instead of competing with it, which a saturated green or blue does.
+     2. Nothing in the chrome out-saturates the content. Greys stay warm and
+        low; the poster is allowed to be the loudest element on screen.
+
+   Dark only, on purpose — this is used in a dim room at night. There is no
+   light theme to fall back to, hence `color-scheme: dark`.
+   ========================================================================== */
+
+:root {
+  /* ── Surfaces. Warm near-black; projection black has warmth in it, and a
+        blue-black would fight the amber and the poster art alike. ────────── */
+  --ink-950: #0B0908;  /* page */
+  --ink-900: #100D0C;
+  --ink-800: #16120F;  /* card */
+  --ink-700: #211C18;  /* inputs, chips */
+  --ink-600: #2E2721;  /* hairlines */
+  --ink-500: #453B33;  /* stronger edges */
+
+  /* ── Text. Never pure white: it glares in a dark room. ──────────────────── */
+  --text-hi:  #F7F3EC;
+  --text-mid: #ADA49B;
+  --text-low: #8A8077;
+
+  /* ── Accent: the lamp house. The single colour in the system. ──────────── */
+  --lamp:       #EFB03E;
+  --lamp-hi:    #FFC766;
+  --lamp-dim:   #C98F28;
+  --lamp-soft:  rgba(239, 176, 62, 0.14);
+  --lamp-faint: rgba(239, 176, 62, 0.07);
+
+  --danger: #E8705A;
+
+  /* ── Type. Editorial serif for the things you look at, grotesque for the
+        things you read and tap. ──────────────────────────────────────────── */
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --step-xl: clamp(2.5rem, 9vw, 3.25rem);
+  --step-l:  clamp(1.75rem, 6vw, 2.125rem);
+  --step-m:  1.125rem;
+  --step-s:  1rem;
+  --step-xs: 0.875rem;
+  --step-2xs: 0.6875rem;
+
+  /* ── Space: 4px base ────────────────────────────────────────────────────── */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+
+  /* ── Radii. Crisper than the old design: pillowy corners read as toy, and a
+        poster has sharp corners. ─────────────────────────────────────────── */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-full: 999px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -6,305 +80,440 @@
 
 html {
   height: 100%;
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   min-height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  /* Purple → warm gold gradient matching the design */
-  background: linear-gradient(125deg, #5c4491 0%, #7b5da8 25%, #9a7860 60%, #b89042 100%);
+  font-family: var(--font-ui);
+  color: var(--text-hi);
+  background-color: var(--ink-950);
+  /* Light spilling from the screen, then falling off into the corners of the
+     room. Two soft washes rather than a gradient sweep — a loud gradient would
+     out-saturate the posters. */
+  background-image:
+    radial-gradient(60rem 38rem at 50% -8%, rgba(239, 176, 62, 0.17), transparent 62%),
+    radial-gradient(45rem 35rem at 50% 112%, rgba(126, 96, 184, 0.09), transparent 65%);
+  background-attachment: fixed;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2.5rem 1rem;
+  padding: var(--s-6) var(--s-4);
   position: relative;
   overflow-x: hidden;
 }
 
-/* Grain texture overlay */
+/* Film grain. Kept from the original — it was the one genuinely filmic thing
+   there — but finer and quieter so it reads as stock, not as noise. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-  opacity: 0.13;
+  z-index: 2;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Vignette: you are looking at a screen in a dark room. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(75% 60% at 50% 45%, transparent 40%, rgba(0, 0, 0, 0.55) 100%);
 }
 
 #root {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   width: 100%;
   display: flex;
   justify-content: center;
 }
 
-/* ── App card ─────────────────────────────────────────── */
+/* ── The card ─────────────────────────────────────────────────────────────── */
 .app {
-  background: #0d1b42;
-  border-radius: 28px;
+  background: var(--ink-800);
+  border: 1px solid var(--ink-600);
+  border-radius: var(--r-lg);
   width: 100%;
-  max-width: 420px;
-  padding: 2.25rem 1.75rem 2rem;
+  max-width: 400px;
+  padding: var(--s-6) var(--s-5) var(--s-5);
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: var(--s-5);
+  /* Depth, plus a 1px highlight along the top edge where light catches it. */
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.045) inset,
+    0 24px 60px -20px rgba(0, 0, 0, 0.85);
+  animation: card-in 420ms var(--ease) both;
 }
 
-/* ── Header ───────────────────────────────────────────── */
-.app-header {
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+/* ── Brand ────────────────────────────────────────────────────────────────── */
+.brand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--s-2);
 }
 
-.popcorn {
-  font-size: 4.5rem;
+.brand-mark {
+  width: 34px;
+  height: 34px;
+  color: var(--lamp);
+  /* The bulbs throw a little light. */
+  filter: drop-shadow(0 0 10px var(--lamp-soft));
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: var(--step-l);
   line-height: 1;
-  display: block;
+  letter-spacing: -0.015em;
+  color: var(--text-hi);
 }
 
-.app-title {
-  font-size: 2.4rem;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: -0.5px;
+.tagline {
+  font-size: var(--step-xs);
+  color: var(--text-low);
+  text-align: center;
 }
 
-/* ── Form ─────────────────────────────────────────────── */
+/* ── Eyebrow: the small wide-tracked caps from a credit block ─────────────── */
+.eyebrow {
+  font-size: var(--step-2xs);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lamp);
+  text-align: center;
+}
+
+/* ── Progress segments ────────────────────────────────────────────────────── */
+.progress {
+  display: flex;
+  gap: var(--s-1);
+  justify-content: center;
+}
+
+.progress-seg {
+  width: 22px;
+  height: 3px;
+  border-radius: var(--r-full);
+  background: var(--ink-600);
+  transition: background 240ms var(--ease);
+}
+
+.progress-seg.on {
+  background: var(--lamp);
+}
+
+.step-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+/* ── Form ─────────────────────────────────────────────────────────────────── */
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--s-5);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--s-3);
 }
 
 .field-label {
-  font-size: 1rem;
+  font-size: var(--step-s);
   font-weight: 500;
-  color: #ffffff;
-  line-height: 1.4;
+  line-height: 1.45;
+  color: var(--text-hi);
 }
 
 .field-input {
-  background: #1a2e5e;
-  border: none;
-  border-radius: 10px;
-  padding: 0.8rem 1rem;
-  color: #c8d4ec;
-  font-size: 0.9rem;
+  background: var(--ink-700);
+  border: 1px solid var(--ink-600);
+  border-radius: var(--r-sm);
+  padding: var(--s-3) var(--s-4);
+  color: var(--text-hi);
+  font-size: var(--step-xs);
   font-family: inherit;
   resize: none;
   outline: none;
-  line-height: 1.55;
-  transition: background 0.15s;
+  line-height: 1.6;
+  transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
 }
 
 .field-input::placeholder {
-  color: #4e5f80;
+  color: var(--text-low);
 }
 
-.field-input:focus {
-  background: #1f3670;
+.field-input:focus-visible {
+  border-color: var(--lamp);
+  box-shadow: 0 0 0 3px var(--lamp-soft);
 }
 
-/* ── Multiple choice ──────────────────────────────────── */
+/* ── Choice chips ─────────────────────────────────────────────────────────── */
 .choices {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--s-2);
 }
 
 .choice {
-  background: #1a2e5e;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
-  color: #c8d4ec;
-  font-size: 0.9rem;
+  background: var(--ink-700);
+  border: 1px solid var(--ink-600);
+  border-radius: var(--r-full);
+  /* Comfortably past a 44px touch target — the phone gets handed around. */
+  padding: var(--s-3) var(--s-4);
+  min-height: 44px;
+  color: var(--text-mid);
+  font-size: var(--step-xs);
   font-family: inherit;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: border-color 160ms var(--ease), color 160ms var(--ease),
+              background 160ms var(--ease), transform 120ms var(--ease);
 }
 
 .choice:hover {
-  background: #22407f;
+  border-color: var(--ink-500);
+  color: var(--text-hi);
+}
+
+.choice:active {
+  transform: scale(0.97);
 }
 
 .choice.selected {
-  background: #62d66a;
-  border-color: #62d66a;
-  color: #0a2010;
-  font-weight: 700;
+  background: var(--lamp);
+  border-color: var(--lamp);
+  color: var(--ink-950);
+  font-weight: 600;
 }
 
-/* ── Setup (party size) ───────────────────────────────── */
+.choice.selected:hover {
+  background: var(--lamp-hi);
+  border-color: var(--lamp-hi);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  width: 100%;
+  min-height: 52px;
+  padding: var(--s-3) var(--s-4);
+  background: var(--lamp);
+  color: var(--ink-950);
+  border: 1px solid var(--lamp);
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  font-size: var(--step-m);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: background 160ms var(--ease), transform 120ms var(--ease),
+              box-shadow 160ms var(--ease);
+  box-shadow: 0 0 24px -6px var(--lamp-soft);
+}
+
+.btn:hover {
+  background: var(--lamp-hi);
+  border-color: var(--lamp-hi);
+  box-shadow: 0 0 30px -6px rgba(239, 176, 62, 0.3);
+}
+
+.btn:active {
+  transform: scale(0.985);
+}
+
+/* One visible focus treatment for every interactive thing. */
+.btn:focus-visible,
+.choice:focus-visible,
+.stepper-btn:focus-visible {
+  outline: 2px solid var(--lamp-hi);
+  outline-offset: 3px;
+}
+
+/* ── Error ────────────────────────────────────────────────────────────────── */
+.error-msg {
+  color: var(--danger);
+  font-size: var(--step-xs);
+  line-height: 1.5;
+  padding: var(--s-3);
+  border: 1px solid rgba(232, 112, 90, 0.3);
+  border-radius: var(--r-sm);
+  background: rgba(232, 112, 90, 0.07);
+}
+
+/* ── Setup ────────────────────────────────────────────────────────────────── */
 .setup {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5rem;
+  gap: var(--s-5);
 }
 
 .setup-label {
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: var(--step-s);
+  color: var(--text-mid);
   text-align: center;
 }
 
 .stepper {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: var(--s-5);
 }
 
 .stepper-btn {
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  border: none;
-  background: #1a2e5e;
-  color: #ffffff;
-  font-size: 1.6rem;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--ink-600);
+  background: var(--ink-700);
+  color: var(--text-hi);
+  font-size: 1.4rem;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.15s, opacity 0.15s;
+  transition: border-color 160ms var(--ease), color 160ms var(--ease),
+              opacity 160ms var(--ease);
 }
 
 .stepper-btn:hover:not(:disabled) {
-  background: #22407f;
+  border-color: var(--lamp);
+  color: var(--lamp);
 }
 
 .stepper-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: default;
 }
 
 .stepper-value {
-  color: #ffffff;
-  font-size: 2.75rem;
-  font-weight: 800;
-  min-width: 2.5rem;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: var(--step-xl);
+  line-height: 1;
+  min-width: 2ch;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
-.setup .btn-green {
-  width: 100%;
+.setup .btn {
+  margin-top: var(--s-1);
 }
 
-/* Person counter shown in place of the title when several people play */
-.person-badge {
-  color: #ffffff;
-  font-size: 2.4rem;
-  font-weight: 800;
-  line-height: 1;
-}
-
-/* ── Button ───────────────────────────────────────────── */
-.btn-green {
-  width: 100%;
-  padding: 1rem;
-  background: #62d66a;
-  color: #0a2010;
-  border: none;
-  border-radius: 14px;
-  font-size: 1.2rem;
-  font-weight: 800;
-  cursor: pointer;
-  margin-top: 0.25rem;
-  transition: background 0.15s, transform 0.1s;
-  letter-spacing: 0.01em;
-}
-
-.btn-green:hover {
-  background: #74e07c;
-}
-
-.btn-green:active {
-  transform: scale(0.98);
-}
-
-/* ── Error ────────────────────────────────────────────── */
-.error-msg {
-  color: #ff7878;
-  font-size: 0.875rem;
-  line-height: 1.4;
-}
-
-/* ── Loading ──────────────────────────────────────────── */
+/* ── Loading: a projector reel turning over ───────────────────────────────── */
 .loading {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 1.25rem;
-  padding: 3rem 0;
+  gap: var(--s-5);
+  padding: var(--s-7) 0;
 }
 
-.loading .popcorn {
-  animation: bounce 0.9s ease-in-out infinite alternate;
+.reel {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    var(--lamp-faint) 70deg,
+    var(--lamp-soft) 150deg,
+    var(--lamp) 320deg,
+    transparent 360deg
+  );
+  animation: spin 1.15s linear infinite;
+  position: relative;
 }
 
-@keyframes bounce {
-  from { transform: translateY(0); }
-  to   { transform: translateY(-12px); }
+/* Punch out the hub so the sweep reads as an arc, not a disc. */
+.reel::after {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: var(--ink-800);
+  border: 1px solid var(--ink-600);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .loading-text {
-  color: #c8d4ec;
-  font-size: 1rem;
-  font-weight: 500;
+  color: var(--text-mid);
+  font-size: var(--step-xs);
 }
 
-/* ── Results ──────────────────────────────────────────── */
+/* ── Result ───────────────────────────────────────────────────────────────── */
 .result {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.25rem;
-  padding: 0.5rem 0;
+  gap: var(--s-4);
 }
 
 .result-title {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: #ffffff;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: var(--step-l);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
   text-align: center;
-  line-height: 1.25;
+  text-wrap: balance;
 }
 
 .result-year {
+  font-family: var(--font-ui);
+  font-size: var(--step-s);
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-low);
+  letter-spacing: 0;
 }
 
-/* Poster */
+/* The signature move: the poster is lit from behind, so it reads as the light
+   source in the room rather than an image sitting on a card. */
 .poster-wrap {
   width: 100%;
-  /* Cap the width, not the height — capping the height would make the box
-     wider than 2:3 and `cover` would crop the poster art. */
-  max-width: 227px;
-  margin: 0 auto;
+  max-width: 230px;
+  margin: var(--s-1) auto 0;
   aspect-ratio: 2 / 3;
-  border-radius: 14px;
+  border-radius: var(--r-xs);
   overflow: hidden;
-  background: #1a2e5e;
+  background: var(--ink-700);
+  border: 1px solid var(--ink-600);
+  box-shadow:
+    0 0 48px -12px rgba(239, 176, 62, 0.28),
+    0 20px 40px -16px rgba(0, 0, 0, 0.9);
+  animation: poster-in 520ms var(--ease) both;
+}
+
+@keyframes poster-in {
+  from { opacity: 0; transform: scale(0.96); }
 }
 
 .poster {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: top center;
   display: block;
 }
 
@@ -312,23 +521,24 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3rem;
+  color: var(--ink-500);
+  box-shadow: none;
 }
 
 .poster-missing::after {
-  content: '🎬';
+  content: '';
+  width: 42px;
+  height: 42px;
+  border: 2px solid currentColor;
+  border-radius: var(--r-xs);
+  /* A blank frame rather than an emoji — nothing to show, said quietly. */
 }
 
-/* Shimmer loading skeleton */
 .shimmer {
-  background: linear-gradient(
-    90deg,
-    #1a2e5e 25%,
-    #223a78 50%,
-    #1a2e5e 75%
-  );
+  background: linear-gradient(90deg, var(--ink-700) 25%, var(--ink-600) 50%, var(--ink-700) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
+  box-shadow: none;
 }
 
 @keyframes shimmer {
@@ -337,8 +547,23 @@ body::before {
 }
 
 .result-desc {
-  color: #c8d4ec;
-  font-size: 0.975rem;
-  line-height: 1.7;
+  color: var(--text-mid);
+  font-size: var(--step-xs);
+  line-height: 1.65;
   text-align: center;
+  text-wrap: pretty;
+}
+
+/* ── Motion preferences ───────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* The reel is the only "still working" signal on that screen, so keep it
+     turning — just slowly enough not to provoke. */
+  .reel {
+    animation: spin 3s linear infinite !important;
+  }
 }
