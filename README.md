@@ -31,14 +31,24 @@ a reasoning model that returns an empty `content`.
 group's answers are embedded too. The closest chunks are the only candidates
 the model is allowed to recommend from.
 
-The vector search runs in the browser by default, so the app works with no
-database at all. To use Supabase's pgvector index instead:
+The search runs against Supabase's pgvector index when the `documents` table is
+reachable, and falls back to scoring the same chunks in the browser when it
+isn't — so a fresh clone works with no database at all.
 
-1. Supabase dashboard → SQL Editor → New query → paste `supabase/schema.sql` → Run.
-2. `npm run ingest` — chunks `movies.txt`, embeds it, and stores the vectors.
+To set the database up on another project:
 
-The app detects the table automatically and falls back to in-browser search
-whenever it isn't reachable.
+```
+supabase link --project-ref <your-ref>
+supabase db push     # applies supabase/migrations/
+npm run ingest       # chunks movies.txt, embeds it, stores the vectors
+```
+
+No database password is needed; the CLI provisions a temporary role. Without
+the CLI, paste the migration in `supabase/migrations/` into the dashboard SQL
+editor and then run `npm run ingest`.
+
+Re-run `npm run ingest` after editing `movies.txt` — it replaces the stored
+chunks rather than adding to them.
 
 Head over to https://vitejs.dev/ to learn more about configuring vite
 ## About Scrimba

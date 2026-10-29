@@ -1,6 +1,6 @@
 -- PopChoice vector store.
--- Run this once in the Supabase dashboard: SQL Editor → New query → paste → Run.
--- Then populate it with:  npm run ingest
+-- Applied with: supabase db push   (or paste into the dashboard SQL editor)
+-- Populate it afterwards with: npm run ingest
 
 create extension if not exists vector;
 
